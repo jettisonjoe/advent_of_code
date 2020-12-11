@@ -1,6 +1,4 @@
 import argparse
-import functools
-import itertools
 
 
 def _parse_args():
