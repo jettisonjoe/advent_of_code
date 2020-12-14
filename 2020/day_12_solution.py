@@ -1,6 +1,5 @@
 import argparse
 import collections
-import itertools
 
 
 def _parse_args():
@@ -94,7 +93,7 @@ def main(data):
     answer_one = abs(ship.x) + abs(ship.y)
     ship = WaypointShip()
     ship.navigate(data)
-    answer_two =  abs(ship.x) + abs(ship.y)
+    answer_two = abs(ship.x) + abs(ship.y)
     return answer_one, answer_two
 
 
