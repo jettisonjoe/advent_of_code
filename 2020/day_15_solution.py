@@ -1,17 +1,3 @@
-import argparse
-import collections
-
-
-def _parse_args():
-    """Parse command line arguments."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument('infile',
-                        type=argparse.FileType('r'),
-                        help='Input text file for this puzzle')
-    args = parser.parse_args()
-    return args.infile.read().splitlines()
-
-
 def recitation(start, n):
     seen = {}
     for i, x in enumerate(start[:-1]):
@@ -28,7 +14,7 @@ def recitation(start, n):
     return last
 
 
-def main(data):
+def main():
     assert recitation((0, 3, 6), 8) == 0
     assert recitation((0, 3, 6), 2020) == 436
     assert recitation((1, 3, 2), 2020) == 1
@@ -50,6 +36,6 @@ def main(data):
 
 
 if __name__ == '__main__':
-    answer_one, answer_two = main(_parse_args())
+    answer_one, answer_two = main()
     print(f'Part One: {answer_one}')
     print(f'Part Two: {answer_two}')
