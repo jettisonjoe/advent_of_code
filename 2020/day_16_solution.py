@@ -1,5 +1,4 @@
 import argparse
-import collections
 import functools
 import itertools
 
