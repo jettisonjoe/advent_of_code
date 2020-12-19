@@ -1,6 +1,5 @@
 import argparse
 import collections
-import sys
 
 
 def _parse_args():
