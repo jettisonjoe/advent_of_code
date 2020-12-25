@@ -1,5 +1,8 @@
 import argparse
+import collections
+import functools
 import math
+import operator
 import re
 
 
@@ -14,12 +17,8 @@ def _parse_args():
 
 
 class Tile:
-    """A square tile of arbitrary size, with links to neighbors."""
-    N = 'north'
-    E = 'east'
-    S = 'south'
-    W = 'west'
-    SIDES = (N, E, S, W)
+    """A square tile of arbitrary size."""
+    SIDES = ('N', 'E', 'S', 'W')
     MONSTER_TOP = re.compile(r'..................#.')
     MONSTER_MID = re.compile(r'#....##....##....###')
     MONSTER_BOT = re.compile(r'.#..#..#..#..#..#...')
@@ -31,7 +30,7 @@ class Tile:
         self.size = len(rows)
 
     def __repr__(self):
-        lines = [f'Tile {self.tile_id}:']
+        lines = [f'\nTile {self.tile_id}:']
         lines.extend(self.rows)
         return '\n'.join(lines)
 
@@ -43,24 +42,18 @@ class Tile:
     def roughness(self):
         return self.hashes - self.count_sea_monsters() * self.MONSTER_SIZE
 
-    def side(self, side_const):
-        if side_const == self.N:
+    def side(self, side_name):
+        if side_name == 'N':
             return self.rows[0]
-        if side_const == self.E:
+        if side_name == 'E':
             return ''.join((row[-1] for row in self.rows))
-        if side_const == self.S:
+        if side_name == 'S':
             return self.rows[-1]
-        if side_const == self.W:
+        if side_name == 'W':
             return ''.join((row[0] for row in self.rows))
 
-    def all_possible_sides(self):
-        return (self.side(self.N[:]), self.side(self.N)[::-1],
-                self.side(self.E[:]), self.side(self.E)[::-1],
-                self.side(self.S[:]), self.side(self.S)[::-1],
-                self.side(self.W[:]), self.side(self.W)[::-1])
-
     def flip(self):
-        """Flip the tile horizontally."""
+        """Flip the tile over the vertical axis."""
         new_rows = []
         for row in self.rows:
             new_rows.append(row[::-1])
@@ -73,16 +66,18 @@ class Tile:
             new_rows.append(''.join((row[i] for row in self.rows)))
         self.rows = new_rows
 
-    def transform_to_match(self, target_side, side_const):
+    def transform_to_fit(self, border_to_match, which_side):
+        """Try to transform until our side matches the given border."""
         for _ in range(2):
             for __ in range(4):
-                if target_side == self.side(side_const):
+                if border_to_match == self.side(which_side):
                     return True
                 self.rotate()
             self.flip()
         return False
 
-    def _count_sea_monsters_impl(self):
+    def count_sea_monsters(self):
+        """Count sea monsters present in our current orientation."""
         monsters = 0
         for i in range(1, self.size - 1):
             for match in self.MONSTER_MID.finditer(self.rows[i]):
@@ -92,77 +87,90 @@ class Tile:
                         monsters += 1
         return monsters
 
-    def count_sea_monsters(self):
+    def find_sea_monsters(self):
+        """Re-orient until we have sea monsters, then count them."""
         for _ in range(2):
             for __ in range(5):
-                if self._count_sea_monsters_impl():
-                    return self._count_sea_monsters_impl()
+                monster_count = self.count_sea_monsters()
+                if monster_count > 0:
+                    return monster_count
                 self.rotate()
             self.flip()
         return 0
 
 
-def find_corners(tiles):
-    """Return (tile, matched_sides) for just the four corner tiles; O(n^2)."""
-    candidates = set(tiles)
-    corners = []
-    for tile in tiles:
-        matched_sides = []
-        for side_const in Tile.SIDES:
-            side = tile.side(side_const)
-            for other in tiles:
+SideMatch = collections.namedtuple('SideMatch', ('side', 'tile_id'))
+
+
+def find_matched_sides(tiles):
+    matches_by_id = {}
+    for tile in tiles.values():
+        matches = []
+        for side_name in Tile.SIDES:
+            side = tile.side(side_name)
+            matches_this_side = []
+            for other in tiles.values():
                 if tile == other:
                     continue
-                if side in other.all_possible_sides():
-                    matched_sides.append(side)
-                    if len(matched_sides) > 2:
-                        candidates.remove(tile)
-                        break
-            if len(matched_sides) > 2:
-                break
-        if len(matched_sides) == 2:
-            corners.append((tile, matched_sides))
-            if len(corners) == 4:
-                break
-    return corners
+                for other_side_name in Tile.SIDES:
+                    if side in (other.side(other_side_name),
+                                other.side(other_side_name)[::-1]):
+                        matches_this_side.append(
+                            SideMatch(side_name, other.tile_id))
+            if len(matches_this_side) > 1:
+                raise RuntimeError('Side has more than one match!')
+            if matches_this_side:
+                matches.append(matches_this_side[0])
+        matches_by_id[tile.tile_id] = matches
+    return matches_by_id
 
 
 def arrange_tiles(tiles):
     """Return a list of rows of properly-arranged tiles."""
     rows = []
+    matches = find_matched_sides(tiles)
+    corners = [t for t in matches if len(matches[t]) == 2]
 
     # Orient an arbitrary corner tile so that it's the NW-most tile.
-    corner_tile, (south, east) = find_corners(tiles)[0]
-    corner_tile.transform_to_match(south, Tile.S)
-    if corner_tile.side(Tile.E) not in (east, east[::-1]):
+    corner_tile = tiles[corners[0]]
+    south_match, east_match = matches[corners[0]]
+    south_side = corner_tile.side(south_match.side)
+    east_side = corner_tile.side(east_match.side)
+    corner_tile.transform_to_fit(south_side, 'S')
+    if corner_tile.side('E') not in (east_side, east_side[::-1]):
         corner_tile.flip()
+    assert corner_tile.side('E') in (east_side, east_side[::-1])
 
-    remaining = set(tiles)
+    remaining = set(tiles.keys())
     grid_size = int(math.sqrt(len(tiles)))
     row = [corner_tile]
-    remaining.remove(corner_tile)
+    remaining.remove(corner_tile.tile_id)
     while len(rows) < grid_size:
         while len(row) < grid_size:
-            num_remaining = len(remaining)
-            for tile in tiles:
-                if tile not in remaining:
+            old_num_remaining = len(remaining)
+            side_matches = matches[row[-1].tile_id]
+            for side_match in side_matches:
+                if side_match.tile_id not in remaining:
                     continue
-                if tile.transform_to_match(row[-1].side(Tile.E), Tile.W):
+                tile = tiles[side_match.tile_id]
+                if tile.transform_to_fit(row[-1].side('E'), 'W'):
                     row.append(tile)
-                    remaining.remove(tile)
-            if num_remaining == len(remaining):
+                    remaining.remove(tile.tile_id)
+            if old_num_remaining == len(remaining):
                 raise RuntimeError("Unable to find tile continue row.")
         rows.append(row)
         if len(rows) == grid_size:
             return rows
-        num_remaining = len(remaining)
-        for tile in tiles:
-            if tile not in remaining:
+        old_num_remaining = len(remaining)
+        side_matches = matches[row[0].tile_id]
+        for side_match in side_matches:
+            if side_match.tile_id not in remaining:
                 continue
-            if tile.transform_to_match(row[0].side(Tile.S), Tile.N):
+            tile = tiles[side_match.tile_id]
+            if tile.transform_to_fit(row[0].side('S'), 'N'):
                 row = [tile]
-                remaining.remove(tile)
-        if num_remaining == len(remaining):
+                remaining.remove(tile.tile_id)
+        if old_num_remaining == len(remaining):
             raise RuntimeError("Unable to find a tile to start next row.")
 
 
@@ -176,20 +184,20 @@ def stitch_tiles(arrangement):
 
 
 def parse_tiles(input_lines):
-    """From input lines, generate a list of tiles."""
-    tiles = []
+    """From input lines, generate a dict of tiles."""
+    tiles = {}
     tile_id = None
     tile_lines = []
     for line in input_lines:
         if line == '':
-            tiles.append(Tile(tile_id, tile_lines))
+            tiles[tile_id] = Tile(tile_id, tile_lines)
             tile_id = None
             tile_lines = []
         elif line.startswith('Tile'):
             tile_id = int(line.split()[1][:-1])
         else:
             tile_lines.append(line)
-    tiles.append(Tile(tile_id, tile_lines))
+    tiles[tile_id] = Tile(tile_id, tile_lines)
     return tiles
 
 
@@ -197,27 +205,29 @@ def run_tests():
     with open('day_20_sample.txt', 'r') as sample_file:
         tiles = parse_tiles(sample_file.read().splitlines())
     assert 9 == len(tiles)
-    corners = tuple(find_corners(tiles))
-    assert 20899048083289 == (corners[0][0].tile_id * corners[1][0].tile_id
-                              * corners[2][0].tile_id * corners[3][0].tile_id)
+    matches = find_matched_sides(tiles)
+    corners = [t for t in matches if len(matches[t]) == 2]
+    assert 20899048083289 == functools.reduce(operator.mul,
+                                              [t for t in corners])
     arranged = arrange_tiles(tiles)
     target_arrangement =[[1951, 2311, 3079],
                          [2729, 1427, 2473],
                          [2971, 1489, 1171]]
     assert target_arrangement == [[t.tile_id for t in row] for row in arranged]
     stitched = stitch_tiles(arranged)
-    assert 2 == stitched.count_sea_monsters()
+    assert 2 == stitched.find_sea_monsters()
     assert 273 == stitched.roughness
 
 
 def main(input_lines):
     run_tests()
     tiles = parse_tiles(input_lines)
-    corners = tuple(find_corners(tiles))
-    answer_one = (corners[0][0].tile_id * corners[1][0].tile_id
-                  * corners[2][0].tile_id * corners[3][0].tile_id)
+    matches = find_matched_sides(tiles)
+    corners = [t for t in matches if len(matches[t]) == 2]
+    answer_one = functools.reduce(operator.mul, [t for t in corners])
     arranged = arrange_tiles(tiles)
     stitched = stitch_tiles(arranged)
+    stitched.find_sea_monsters()
     answer_two = stitched.roughness
     return answer_one, answer_two
 
