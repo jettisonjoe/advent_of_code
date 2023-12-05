@@ -1,4 +1,11 @@
-"""Main entry point for Advent of Code 2023."""
+"""Advent of Code 2023.
+
+Solvers and puzzle inputs for the individual days should be placed into this year's
+directory next to this entry point and named day_<NUMBER>.py and day_<NUMBER>.txt
+respectively.
+
+NOTE: Puzzle inputs are not checked into the code repo, so they need to be provided.
+"""
 
 import argparse
 import logging
@@ -9,30 +16,24 @@ from typing import Any, Optional, Tuple
 
 def parse_args():
     """Parse command line arguments."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-d",
-                        "--day",
-                        help="day number to solve",
-                        type=int,
-                        required=True)
-    parser.add_argument("-i",
-                        "--infile",
-                        help="puzzle input as a text file",
-                        type=pathlib.Path)
-    parser.add_argument("-v",
-                        "--verbose",
-                        help="enable verbose output",
-                        action="store_true")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "-d", "--day", help="day number to solve", type=int, required=True
+    )
+    parser.add_argument(
+        "-i", "--infile", help="puzzle input as a text file", type=pathlib.Path
+    )
+    parser.add_argument(
+        "-v", "--verbose", help="enable debug logging", action="store_true"
+    )
     return parser.parse_args()
 
 
-def main(day: int,
-         infile: Optional[pathlib.Path],
-         verbose: bool) -> Tuple[Any, Any]:
+def main(day: int, infile: Optional[pathlib.Path], verbose: bool) -> Tuple[Any, Any]:
     """Import the solver for the given day and run it on the input."""
     if verbose:
         logging.basicConfig(level=logging.DEBUG)
-    
+
     module_name = f"day_{day}"
     solver = importlib.import_module(module_name)
 

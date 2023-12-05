@@ -3,9 +3,8 @@
 import dataclasses
 import logging
 import re
-import sys
 import textwrap
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, Optional, Tuple
 
 
 @dataclasses.dataclass
@@ -28,8 +27,8 @@ class SeedRange:
 
 class Almanac:
     """An Island Island Almanac."""
-    SECTION_HEADER_RE = re.compile(
-        r"(?P<intype>[a-z]+)-to-(?P<outtype>[a-z]+) map:")
+
+    SECTION_HEADER_RE = re.compile(r"(?P<intype>[a-z]+)-to-(?P<outtype>[a-z]+) map:")
 
     def __init__(self, section_strs: Iterable[str]):
         self.data = dict()
@@ -37,14 +36,15 @@ class Almanac:
         for section_str in section_strs:
             section_lines = section_str.splitlines()
             header_match = self.SECTION_HEADER_RE.fullmatch(section_lines[0])
-            lookup_func = self.make_lookup_func(header_match.group("outtype"),
-                                                section_lines[1:])
+            lookup_func = self.make_lookup_func(
+                header_match.group("outtype"), section_lines[1:]
+            )
             self.data[header_match.group("intype")] = lookup_func
-    
+
     @staticmethod
     def make_lookup_func(outtype: str, table: Iterable[str]):
         """Makes a lookup function based on a table of ranges.
-        
+
         The lookup function uses the table to compute the output value and
         returns the str output type followed by the value. Example:
             "light", 46
@@ -59,10 +59,15 @@ class Almanac:
         ranges = []
         for line in table:
             dest_start, src_start, size = line.split()
-            ranges.append((int(src_start),
-                           int(src_start) + int(size),
-                           int(dest_start) - int(src_start)))
+            ranges.append(
+                (
+                    int(src_start),
+                    int(src_start) + int(size),
+                    int(dest_start) - int(src_start),
+                )
+            )
         ranges = tuple(sorted(ranges))
+
         def lookup_func(val):
             first_start = ranges[0][0]
             if val < first_start:
@@ -76,9 +81,9 @@ class Almanac:
                     if val < next_start:
                         return outtype, val, next_start - val
             return outtype, val, float("inf")
-        
+
         return lookup_func
-    
+
     def lookup(self, seed_number: int) -> Seed:
         seed = Seed()
         next_lookup: Tuple[str, int] = ("seed", seed_number)
@@ -89,10 +94,10 @@ class Almanac:
                 break
             next_key, next_val, _ = self.data[key](val)
             next_lookup = (next_key, next_val)
-        
+
         logging.debug(f"Found seed {seed}.")
         return seed
-    
+
     def lookup_range(self, seed_number: int) -> SeedRange:
         start_seed = Seed()
         smallest_range_size = float("inf")
@@ -105,7 +110,7 @@ class Almanac:
             next_key, next_val, range_size = self.data[key](val)
             smallest_range_size = min(range_size, smallest_range_size)
             next_lookup = (next_key, next_val)
-        
+
         logging.debug(f"Found seed range starting with {start_seed}.")
         return SeedRange(start_seed, smallest_range_size)
 
@@ -119,7 +124,8 @@ def parse_input(input: str) -> Tuple[Tuple[int], Almanac]:
 
 
 def run_tests():
-    test_input = textwrap.dedent("""\
+    test_input = textwrap.dedent(
+        """\
         seeds: 79 14 55 13
 
         seed-to-soil map:
@@ -153,7 +159,8 @@ def run_tests():
         humidity-to-location map:
         60 56 37
         56 93 4
-    """)
+    """
+    )
 
     _, almanac = parse_input(test_input)
 
@@ -185,5 +192,3 @@ def solve_part_2(puzzle_input: str):
             lowest_location = min(lowest_location, seed_range.seed.location)
             start += seed_range.size
     return lowest_location
-    
-

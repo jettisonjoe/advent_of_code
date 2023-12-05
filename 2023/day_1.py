@@ -9,15 +9,18 @@ def run_tests():
     assert calibration_value("a1b2c3d4e5f") == 15
     assert calibration_value("treb7uchet") == 77
 
-    test_input_1 = textwrap.dedent("""\
+    test_input_1 = textwrap.dedent(
+        """\
         1abc2
         pqr3stu8vwx
         a1b2c3d4e5f
         treb7uchet
-    """)
+    """
+    )
     assert solve_part_1(test_input_1) == 142
-    
-    test_input_2 = textwrap.dedent("""\
+
+    test_input_2 = textwrap.dedent(
+        """\
         two1nine
         eightwothree
         abcone2threexyz
@@ -25,7 +28,8 @@ def run_tests():
         4nineeightseven2
         zoneight234
         7pqrstsixteen
-    """)
+    """
+    )
 
     assert solve_part_2(test_input_2) == 281
 
@@ -38,7 +42,7 @@ def calibration_value(line: str):
 
 def replace_text_digits(line: str) -> str:
     """Replaces spelled digits with numerical digits.
-    
+
     Preserves the first and last letter in case some letters contribute to
     multiple spelled digits, as in "eightwothree".
     """
@@ -61,8 +65,9 @@ def solve_part_1(puzzle_input: str) -> int:
 
 
 def solve_part_2(puzzle_input: str):
-    return sum(calibration_value(replace_text_digits(l))
-               for l in puzzle_input.splitlines())
+    return sum(
+        calibration_value(replace_text_digits(l)) for l in puzzle_input.splitlines()
+    )
 
 
 if __name__ == "main":

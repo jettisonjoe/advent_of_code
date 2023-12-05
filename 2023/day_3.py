@@ -33,14 +33,14 @@ class EngineSchematic:
     @classmethod
     def from_str(cls, str_form_schematic: str):
         return cls(str_form_schematic.rstrip().splitlines())
-    
+
     @property
     def part_numbers(self) -> Tuple[int]:
         parts = set()
         for row, col in self.symbols:
             parts.update(self.parts_adjacent(row, col))
         return tuple(p.number for p in parts)
-    
+
     @property
     def gear_ratios(self) -> Tuple[int]:
         ratios = []
@@ -49,7 +49,7 @@ class EngineSchematic:
             if len(adjacent_parts) == 2:
                 ratios.append(adjacent_parts[0].number * adjacent_parts[1].number)
         return tuple(ratios)
-    
+
     @staticmethod
     def numerical_prefix(s: str) -> str:
         """Returns the longest fully numerical prefix on the input string."""
@@ -69,71 +69,93 @@ class EngineSchematic:
             result += s[idx]
             idx -= 1
         return result[::-1]
-    
+
     def parts_adjacent(self, row: int, col: int) -> Tuple[Part]:
         """Returns a tuple of all parts adjacent to the given coordinates.
-        
+
         Parts are always layed out horizontally from left to right, which means
         a few things:
-        
+
           - There can be at most one part directly W, and one directly E.
-        
+
           - If there is a part touching directly N, then there's only one part
             to the N, since the N spot is adjacent to both the NW and NE spots.
             Same goes for the S spot.
 
           - If the N spot is empty, there could be two parts to the N, one
-            touching the NW spot, and one touching the NE spot.
+            touching the NW spot, and one touching the NE spot. Same for S.
+
+        This function is a mess and a half. I would figure out something more
+        elegant if I had time.
         """
         parts = []
 
         # Check if there's a part to the W.
         if col > 0 and NUMBER_RE.fullmatch(self.rows[row][col - 1]):
             part_str = self.numerical_suffix(self.rows[row][:col])
-            parts.append(Part(number=int(part_str),
-                              location=(row, col - len(part_str))))
-        
+            parts.append(
+                Part(number=int(part_str), location=(row, col - len(part_str)))
+            )
+
         # Check if there's a part to the E.
-        if col < len(self.rows[row]) - 1 and NUMBER_RE.fullmatch(self.rows[row][col + 1]):
-            part_str = self.numerical_prefix(self.rows[row][col + 1:])
-            parts.append(Part(number=int(part_str),
-                              location=(row, col + 1)))
-        
+        if col < len(self.rows[row]) - 1 and NUMBER_RE.fullmatch(
+            self.rows[row][col + 1]
+        ):
+            part_str = self.numerical_prefix(self.rows[row][col + 1 :])
+            parts.append(Part(number=int(part_str), location=(row, col + 1)))
+
         # Check if there's a part to the N, or parts to the NW and NE.
         if row > 0 and NUMBER_RE.fullmatch(self.rows[row - 1][col]):
             left_str = self.numerical_suffix(self.rows[row - 1][:col])
             right_str = self.numerical_prefix(self.rows[row - 1][col:])
-            parts.append(Part(number=int(left_str + right_str),
-                              location=(row - 1, col - len(left_str))))
+            parts.append(
+                Part(
+                    number=int(left_str + right_str),
+                    location=(row - 1, col - len(left_str)),
+                )
+            )
         else:
             if row > 0 and col > 0 and NUMBER_RE.fullmatch(self.rows[row - 1][col - 1]):
                 part_str = self.numerical_suffix(self.rows[row - 1][:col])
-                parts.append(Part(number=int(part_str),
-                             location=(row, col - len(part_str))))
-            if (row > 0 and col < len(self.rows[row])
-                    and NUMBER_RE.fullmatch(self.rows[row - 1][col + 1])):
-                part_str = self.numerical_prefix(self.rows[row -  1][col + 1:])
-                parts.append(Part(number=int(part_str),
-                                  location=(row - 1, col + 1)))
-        
+                parts.append(
+                    Part(number=int(part_str), location=(row, col - len(part_str)))
+                )
+            if (
+                row > 0
+                and col < len(self.rows[row])
+                and NUMBER_RE.fullmatch(self.rows[row - 1][col + 1])
+            ):
+                part_str = self.numerical_prefix(self.rows[row - 1][col + 1 :])
+                parts.append(Part(number=int(part_str), location=(row - 1, col + 1)))
+
         # Check if there's a part to the S, or parts to the SW and SE.
         if row < len(self.rows) - 1 and NUMBER_RE.fullmatch(self.rows[row + 1][col]):
             left_str = self.numerical_suffix(self.rows[row + 1][:col])
             right_str = self.numerical_prefix(self.rows[row + 1][col:])
-            parts.append(Part(number=int(left_str + right_str),
-                              location=(row + 1, col - len(left_str))))
+            parts.append(
+                Part(
+                    number=int(left_str + right_str),
+                    location=(row + 1, col - len(left_str)),
+                )
+            )
         else:
-            if (row < len(self.rows) - 1 and col > 0
-                    and NUMBER_RE.fullmatch(self.rows[row + 1][col - 1])):
+            if (
+                row < len(self.rows) - 1
+                and col > 0
+                and NUMBER_RE.fullmatch(self.rows[row + 1][col - 1])
+            ):
                 part_str = self.numerical_suffix(self.rows[row + 1][:col])
-                parts.append(Part(number=int(part_str),
-                             location=(row, col - len(part_str))))
-            if (row < len(self.rows) and col < len(self.rows[row])
-                    and NUMBER_RE.fullmatch(self.rows[row + 1][col + 1])):
-                part_str = self.numerical_prefix(self.rows[row +  1][col + 1:])
-                parts.append(Part(number=int(part_str),
-                                  location=(row + 1, col + 1)))
-        
+                parts.append(
+                    Part(number=int(part_str), location=(row, col - len(part_str)))
+                )
+            if (
+                row < len(self.rows)
+                and col < len(self.rows[row])
+                and NUMBER_RE.fullmatch(self.rows[row + 1][col + 1])
+            ):
+                part_str = self.numerical_prefix(self.rows[row + 1][col + 1 :])
+                parts.append(Part(number=int(part_str), location=(row + 1, col + 1)))
+
         return tuple(parts)
 
 
@@ -151,7 +173,8 @@ def run_tests():
     suffix_2 = EngineSchematic.numerical_suffix("*1701")
     assert "1701" == suffix_2, suffix_2
 
-    test_input = textwrap.dedent("""\
+    test_input = textwrap.dedent(
+        """\
         467..114..
         ...*......
         ..35..633.
@@ -162,7 +185,8 @@ def run_tests():
         ......755.
         ...$.*....
         .664.598..                     
-    """)
+    """
+    )
 
     schematic = EngineSchematic.from_str(test_input)
     sum_of_parts = sum(schematic.part_numbers)
