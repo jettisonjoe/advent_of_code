@@ -37,7 +37,11 @@ def main(day: int,
     solver = importlib.import_module(module_name)
 
     infile = infile or pathlib.Path(f"day_{day}.txt")
+    if not infile.exists():
+        raise IOError(f"Puzzle input file {infile.name} doesn't exist.")
     puzzle_input = infile.read_text()
+    if puzzle_input.strip() == "":
+        raise ValueError("Puzzle input file has no contents.")
 
     if hasattr(solver, "run_tests"):
         logging.debug("Running tests...")
@@ -47,6 +51,7 @@ def main(day: int,
     logging.debug("Solving puzzles...")
     solution_1 = solver.solve_part_1(puzzle_input)
     solution_2 = solver.solve_part_2(puzzle_input)
+    logging.debug("...Done solving puzzles.")
 
     return solution_1, solution_2
 
