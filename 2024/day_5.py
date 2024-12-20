@@ -51,12 +51,12 @@ class Update:
                 raise ValueError(f"Update contains a repeated page: {page}\n{text}")
             self.idx_lookup[page] = idx
             update.append(page)
-        
+
         self.update = tuple(update)
- 
+
     def __getitem__(self, item):
-            return self.idx_lookup[item]
-    
+        return self.idx_lookup[item]
+
     def __contains__(self, item):
         return item in self.idx_lookup
 
@@ -82,12 +82,12 @@ def parse_input(input_text):
 
 def is_valid_update(rules, update):
     for page, subsequents in rules.items():
-            if page in update:
-                for subsequent in subsequents:
-                    if subsequent not in update:
-                        continue
-                    if update[subsequent] < update[page]:
-                        return False
+        if page in update:
+            for subsequent in subsequents:
+                if subsequent not in update:
+                    continue
+                if update[subsequent] < update[page]:
+                    return False
     return True
 
 

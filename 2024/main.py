@@ -33,6 +33,8 @@ def main(day: int, infile: Optional[pathlib.Path], verbose: bool) -> Tuple[Any, 
     """Import the solver for the given day and run it on the input."""
     if verbose:
         logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
 
     module_name = f"day_{day}"
     solver = importlib.import_module(module_name)
